@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/Houssnou/Node-SQL-Homework#readme",
   "dependencies": {
+    "console.table": "^0.10.0",
     "inquirer": "^6.2.1",
     "mysql": "^2.16.0"
   }

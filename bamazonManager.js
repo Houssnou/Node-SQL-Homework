@@ -1,6 +1,7 @@
 //inquirer and mysql
 const inquirer = require("inquirer");
 const mysql = require("mysql");
+require('console.table');
 
 const cnx = mysql.createConnection({
   host: "localhost",
@@ -108,10 +109,10 @@ const AddNewProduct = async () => {
     //console.log result
     console.log(`Product inserted!!!`);
     console.log(`${res.affectedRows} - row inserted`);
-  });
 
-  //display menu again
+    //display menu again
   displayMenu();
+  });  
 }
 
 //function update product

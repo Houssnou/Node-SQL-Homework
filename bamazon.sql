@@ -28,3 +28,30 @@ products
     ("Knitwear", "Women's Fashion", 19.99, 75),
     ("Women Coat", "Women's Fashion", 149.99, 100),
     ("MK Watch", "Women's Fashion", 120.99, 120);
+
+CREATE TABLE departments
+( department_id INTEGER NOT NULL  AUTO_INCREMENT,
+  department_name VARCHAR  (45) NOT NULL,
+  over_head_costs INTEGER NOT NULL,
+  
+  PRIMARY KEY  (department_id)
+);
+
+INSERT INTO 
+departments
+    (department_name, over_head_costs)
+  VALUES
+    ("Men's Fashion", 10000),
+    ("Women's Fashion", 12000),
+    ("Baby Apparel", 8000),
+    ("Electronics", 5000),
+    ("House Supply", 12000),
+    ("Kids Apparel", 2500),
+    ("Animal Care", 1000);
+
+ALTER TABLE products
+ADD products_sale float ;
+
+Update products
+set products_sale = 0;
+

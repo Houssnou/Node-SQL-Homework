@@ -1,6 +1,7 @@
 //inquirer and mysql
 const inquirer = require("inquirer");
 const mysql = require("mysql");
+//require('console.table');
 
 const cnx = mysql.createConnection({
   host: "localhost",
@@ -39,6 +40,7 @@ const displayProducts = () => {
       });
     } */
     //new console table to display the content as a table
+    //console.table(res,res.slice(1));
     console.table(res);
 
     //run function buyProduct
@@ -88,7 +90,7 @@ const buyProduct = async () => {
 
       //cnx to the db to get the specific product with the entered id 
       //query to get the product quantity by id
-      const querySelect = "select product_name AS Name,stock_quantity As Qty,price As Price from products where item_id=?";
+      const querySelect = "select product_name AS Name,stock_quantity As Qty,price As Price,product_sales As Sales from products where item_id=?";
 
       cnx.query(querySelect, [product.product_id], (error, result) => {
             if (error) {
@@ -99,12 +101,15 @@ const buyProduct = async () => {
             const productName = result[0].Name;
             const inStock = result[0].Qty;
             const price = result[0].Price;
+            let sales=result[0].Sales;
 
             //console.log(queryData);
             if (product.quantity < inStock) {
 
               //generate the total for confirmation purposes
               const total = price * product.quantity;
+              //update product sales
+              sales+=total;
 
               //confirmation message
               return inquirer.prompt({
@@ -116,13 +121,13 @@ const buyProduct = async () => {
                   if (confirmation.confirmBuy) {
                     //purchase authorized
                     //Update database with the new qty 
-                     const currentQty = inStock - product.quantity;
+                    const currentQty = inStock - product.quantity;
 
                     //update query to update db
-                    const updateQuery = "Update products set stock_quantity=? where item_id=?";
+                    const updateQuery = "Update products set stock_quantity=?, product_sales=? where item_id=?";
 
                     //new cnx to the database
-                    cnx.query(updateQuery,[currentQty,product.product_id], (err, result)=> {
+                    cnx.query(updateQuery,[currentQty,sales,product.product_id], (err, result)=> {
                         if (err) throw err;
 
                         console.log(`\n Purchase completed`); 
