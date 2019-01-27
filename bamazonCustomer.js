@@ -1,7 +1,7 @@
 //inquirer and mysql
 const inquirer = require("inquirer");
 const mysql = require("mysql");
-//require('console.table');
+require('console.table');
 
 const cnx = mysql.createConnection({
   host: "localhost",
@@ -28,7 +28,7 @@ const displayProducts = () => {
   return cnx.query("SELECT * FROM products", (err, res) => {
     if (err) throw err;
 
-    /* //table data to contain the formatted data to be used the console.table
+    //table data to contain the formatted data to be used the console.table
     const data=[]; 
     for(var key in res){
       data.push({
@@ -36,12 +36,14 @@ const displayProducts = () => {
             "NAME" : res[key].product_name,      
             "DEPARTMENT": res[key].department_name ,    
             "PRICE": `$${res[key].price}` ,    
-            "QUANTITY" : res[key].stock_quantity
+            "QUANTITY" : res[key].stock_quantity,
+            "TOTAL SALES" : res[key].product_sales
+            
       });
-    } */
+    } 
     //new console table to display the content as a table
-    //console.table(res,res.slice(1));
-    console.table(res);
+    console.table(data);
+    //console.table(res);
 
     //run function buyProduct
     buyProduct();

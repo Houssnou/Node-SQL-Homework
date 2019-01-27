@@ -32,7 +32,7 @@ products
 CREATE TABLE departments
 ( department_id INTEGER NOT NULL  AUTO_INCREMENT,
   department_name VARCHAR  (45) NOT NULL,
-  over_head_costs INTEGER NOT NULL,
+  over_head_costs INTEGER NOT NULL DEFAULT 0,
   
   PRIMARY KEY  (department_id)
 );
