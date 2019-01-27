@@ -1,0 +1,24 @@
+{
+  "name": "Node-SQL-Homework",
+  "version": "1.0.0",
+  "description": "Node.js &amp; MySQL Homework Unit 12",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Houssnou/Node-SQL-Homework.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Houssnou/Node-SQL-Homework/issues"
+  },
+  "homepage": "https://github.com/Houssnou/Node-SQL-Homework#readme",
+  "dependencies": {
+    "inquirer": "^6.2.1",
+    "mysql": "^2.16.0"
+  }
+}
