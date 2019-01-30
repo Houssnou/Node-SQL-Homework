@@ -7,7 +7,7 @@ const cnx = mysql.createConnection({
   host: "localhost",
   port: 3306,
   user: "root",
-  password: "@Watinoma00",
+  password: "",
   database: "bamazon_db"
 });
 
