@@ -5,45 +5,43 @@ require('console.table');
 
 const cnx = mysql.createConnection({
   host: "localhost",
-  // Your port; if not 3306
   port: 3306,
-  // Your username
   user: "root",
-  // Your password
   password: "@Watinoma00",
   database: "bamazon_db"
 });
 
 cnx.connect((err) => {
   if (err) throw err;
-  //console.log("connected as id " + cnx.threadId);
-  //run function display Menu
-  displayMenu();
-
+  console.log("=> Connected to bamazon_bd");
+  //run function menu
+  menu();
 });
 
 //display product
 const displayProducts = () => {
-  const allProductsQuery="SELECT * FROM products";
-  return cnx.query(allProductsQuery, (err, res) => {
+  const sqlString = "SELECT * FROM products";
+  const query = cnx.query(sqlString, (err, res) => {
     if (err) throw err;
     //new console table to display the content as a table
     console.table(res);
     //display menu back 
-    displayMenu();
+    menu();
   });
+  console.log(query.sql);
 }
 
 //function Low inventory
-const lowInventory=()=>{
-  const lowStockQuery="SELECT * FROM products where stock_quantity < 100";
-  cnx.query(lowStockQuery, (err, res) => {
+const lowInventory = () => {
+  const lowStockSql = "SELECT * FROM products where stock_quantity < 100";
+  const query = cnx.query(lowStockSql, (err, res) => {
     if (err) throw err;
     //new console table to display the content as a table
     console.table(res);
     //display menu back 
-    displayMenu();
+    menu();
   });
+  console.log(query.sql);
 }
 
 //function getProduct using inquirer to get the values and validate values.
@@ -83,7 +81,7 @@ const getNewProduct = () => {
     filter: function (qtyInput) {
       return parseFloat(qtyInput);
     }
-  }])
+  }]);
 }
 
 //add a new product
@@ -91,141 +89,118 @@ const AddNewProduct = async () => {
   // get the new product values from inquirer function
   const newProduct = await getNewProduct();
 
-  //console.log(newProduct);
-  const productName = newProduct.name;
-  const productDepartment = newProduct.department;
-  const productPrice = newProduct.price;
-  const productQty = newProduct.quantity;
+  //bulding the new product object
+  const insertSql = "INSERT INTO products SET ?";
 
-  //query to insert values 
-  const insertQuery = `INSERT INTO products (product_name, department_name, price, stock_quantity) VALUES ("${productName}","${productDepartment}",${productPrice},${productQty} )`;
+  const insertData = {
+    product_name: newProduct.name,
+    department_name: newProduct.department,
+    price: newProduct.price,
+    stock_quantity: newProduct.quantity,
+    product_sales: 0
+  };
 
-  console.log(insertQuery);
-  //const insertvalues = [productName, productDepartment, productPrice, productQty];
-  //connect to the DB to insert the new product    
-
-  cnx.query(insertQuery, (err, res) => {
+  //cnx to the bd to insert the productinsertData
+  const query = cnx.query(insertSql, insertData, (err, res) => {
     if (err) throw err;
     //console.log result
-    console.log(`Product inserted!!!`);
-    console.log(`${res.affectedRows} - row inserted`);
+    console.log(`Product inserted!`);
+    console.log(`${res.affectedRows} - row inserted `);
 
     //display menu again
-  displayMenu();
-  });  
+    menu();
+  });
+  console.log(query.sql);
 }
-
-//function update product
-const updateAProduct = () => {
-  return inquirer.prompt([{
-    name: "product_id",
-    message: "ID of the product to add:",
-    validate: function (productID) {
-      if (!isNaN(productID)) {
-        return true;
-      } else {
-        console.log("\n Enter an integer!")
-        return false;
-      }
-    },
-    filter: function (productID) {
-      return parseInt(productID);
-    }
-  }, {
-    name: "quantity",
-    message: "How many items would like to add :",
-    validate: function (productQty) {
-      if (!isNaN(productQty)) {
-        return true;
-      } else {
-        console.log("\n Enter an integer!")
-        return false;
-      }
-    },
-    filter: function (productQty) {
-      return parseInt(productQty);
-    }
-  }])
-}
-
 
 //function addInventory
 const addInventory = async () => {
-  //get the id of the product that the qty will be increased
-  //using function updateProduct
-  const updateProduct = await updateAProduct();
+  console.clear();
+  const lowStockSql = "SELECT * FROM products where stock_quantity < 100";
+  const query = cnx.query(lowStockSql, (err, products) => {
+    if (err) {
+      cosnsole.log(err);
+    }
+    //first level 
+    console.table(products);
+    //ask the manager which product he wants to update
+    inquirer.prompt([{
+      name: "product",
+      message: "Select a product",
+      type: "list",
+      choices: products.map(product => product.product_name)
+    }, {
+      name: "quantity",
+      message: "How many items would like to add :",
+      validate: function (productQty) {
+        if (!isNaN(productQty)) {
+          return true;
+        } else {
+          console.log("\n Enter an integer!")
+          return false;
+        }
+      },
+      filter: function (productQty) {
+        return parseInt(productQty);
+      }
+    }]).then((uProduct) => {
+      //second level
+      //find what the product the manager picked to gather more info
+      const updatingProduct = products.find(product => product.product_name === uProduct.product);
 
-  //console.log the prodcut info got from inquirer  
-  console.log(`Product ID: ${updateProduct.product_id}`);
-  console.log(`Quantity: ${updateProduct.quantity}`);
+      const inStock = updatingProduct.stock_quantity;
 
-  //cnx to the db to get the specific product with the entered id 
-  //query to get the product quantity by id
-  const querySelect = "select product_name AS Name,stock_quantity As Qty,price As Price from products where item_id=?";
+      //confirmation message
+      return inquirer.prompt({
+        type: "confirm",
+        name: "confirmUpdate",
+        message: `Do you want to add ${uProduct.quantity} items of this product ${updatingProduct.product_name} ? `,
+        default: true
+      }).then((confirmation) => {
+        if (confirmation.confirmUpdate) {
+          //product update validated 
+          //Update database with the new qty 
+          const currentQty = inStock + uProduct.quantity;
 
-  cnx.query(querySelect, [updateProduct.product_id], (error, result) => {
-    if (error) {
-      console.log(error)
-    };
+          //update query to update db
+          const updateSql = "Update products set stock_quantity=? where item_id=?";
 
-    //get the values of the products from the DB
-    const productName = result[0].Name;
-    const inStock = result[0].Qty;
-  
-    //confirmation message
-    return inquirer.prompt({
-      type: "confirm",
-      name: "confirmUpdate",
-      message: `Are you sure you want to add this product: ${productName}, ${updateProduct.quantity} time(s)? `,
-      default: true
-    }).then((confirmation) => {
-      if (confirmation.confirmUpdate) {
-        //product update validated 
-        //Update database with the new qty 
-        const currentQty = inStock + updateProduct.quantity;
+          //new cnx to the database to update the product qty
+          const updateQuery = cnx.query(updateSql, [currentQty, updatingProduct.item_id], (err, result) => {
+            if (err) throw err;
 
-        //update query to update db
-        const updateQuery = "Update products set stock_quantity=? where item_id=?";
+            console.log(`\nUpdate completed `);
+            console.log(`${uProduct.quantity} - items of ${updatingProduct.product_name} added!`);
+            console.log(`Current Stock: ${currentQty}`);
 
-        //new cnx to the database
-        cnx.query(updateQuery, [currentQty, updateProduct.product_id], (err, result) => {
-          if (err) throw err;
-
-          console.log(`\n Update completed`);
-          console.log(`\n ${updateProduct.quantity} - ${productName} added! `);
-          console.log(`\n Current Stock :${currentQty}`);
-
-          //console.log(`${result.affectedRows} record(s) updated`);
-          console.log("\n\n");
+            //display menu
+            menu();
+          });
+          //console.log(updateQuery.sql);
+        } else {
+          console.log("\n Inventory Updated cancelled!");
 
           //display menu
-          displayMenu();
-
-        });
-      } else {
-        //clear current display 
-        //and display the table of products again
-        console.log("\n Inventory Updated cancelled!");
-
-        //display menu
-        displayMenu();
-      }
+          menu();
+        }
+      });
+      //end second level
     });
+    //end first level
   });
-}  
+  console.log(query.sql);
+  //End function Update product
+}
 //function display menu
-const displayMenu = () => {
+const menu = () => {
   inquirer
     .prompt([{
       type: "list",
       name: "menu",
-      message: "....:MENU:....",
       choices: ["View Products for Sale", "View Low Inventory", "Add to Inventory", "Add New Product", "Exit"]
     }]).then(selection => {
       //console.log(selection.menu);
       const choice = selection.menu;
-      console.log(`Menu selected: ${choice}`);
-
       //switch case
       switch (choice) {
 
@@ -242,9 +217,9 @@ const displayMenu = () => {
           return AddNewProduct();
 
         case "Exit":
-          return AddNewProduct();
+          return process.exit(0);
 
       }
-    })
+    });
 
 }

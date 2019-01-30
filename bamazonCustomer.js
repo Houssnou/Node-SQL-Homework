@@ -5,160 +5,129 @@ require('console.table');
 
 const cnx = mysql.createConnection({
   host: "localhost",
-  // Your port; if not 3306
   port: 3306,
-  // Your username
   user: "root",
-  // Your password
   password: "@Watinoma00",
   database: "bamazon_db"
 });
 
 cnx.connect((err) => {
   if (err) throw err;
-  console.log("connected as id " + cnx.threadId);
-  console.log("Enter the info for the product you would like to buy.");
-
-  //display the products lists before getting any value to process a buying
+  console.log("=> Connected to bamazon_bd");
+  //run function displayAllProducts
   displayProducts();
-
 });
 
+
+
 const displayProducts = () => {
-  return cnx.query("SELECT * FROM products", (err, res) => {
+
+  const query = cnx.query("SELECT * FROM products", (err, products) => {
     if (err) throw err;
 
-    //table data to contain the formatted data to be used the console.table
-    const data=[]; 
-    for(var key in res){
+    //** the customer doesnt need to see the sales column from this table 
+    //so we will build an array of object that containts a copy of the table without the sales part
+    const data = [];
+    for (var key in products) {
       data.push({
-            "ID": res[key].item_id ,      
-            "NAME" : res[key].product_name,      
-            "DEPARTMENT": res[key].department_name ,    
-            "PRICE": `$${res[key].price}` ,    
-            "QUANTITY" : res[key].stock_quantity,
-            "TOTAL SALES" : res[key].product_sales
-            
+        "ID": products[key].item_id,
+        "NAME": products[key].product_name,
+        "DEPARTMENT": products[key].department_name,
+        "PRICE": `$${products[key].price}`,
+        "QUANTITY": products[key].stock_quantity,
       });
-    } 
+    }
     //new console table to display the content as a table
     console.table(data);
-    //console.table(res);
 
-    //run function buyProduct
-    buyProduct();
+   //run function buyProduct with the displayed table
+    buyProduct(products);    
   });
+  console.log(query.sql);
 }
-
-const getProduct = () => {
-  return inquirer.prompt([{
-    name: "product_id",
-    message: "Product ID:",
-    validate: function (productID) {
-      if (!isNaN(productID)) {
-        return true;
-      } else {
-        console.log("\n Enter an integer!")
-        return false;
-      }
-    },
-    filter: function (productID) {
-      return parseInt(productID);
-    }
-  }, {
-    name: "quantity",
-    message: "How many items would like to purchase :",
-    validate: function (productQty) {
-      if (!isNaN(productQty)) {
-        return true;
-      } else {
-        console.log("\n Enter an integer!")
-        return false;
-      }
-    },
-    filter: function (productQty) {
-      return parseInt(productQty);
-    }
-  }])
-}
-
 // function to process the buy 
-const buyProduct = async () => {
+const buyProduct = (table) => {
+    //prompt the user to get his values //now we working with the data returned by the query 
+    inquirer.prompt([{
+      name: "user_product",
+      message: "Select a product",
+      type: "list",
+      choices: table.map(product => product.product_name)
+    }, {
+      name: "user_qty",
+      message: "How many items would like to purchase :",
+      validate: function (productQty) {
+        if (!isNaN(productQty)) {
+          return true;
+        } else {
+          console.log("\n Enter an integer!")
+          return false;
+        }
+      },
+      filter: function (productQty) {
+        return parseInt(productQty);
+      }
+    }]).then(userPick => {
+      //first level logic to process the purchase or not 
 
-      const product = await getProduct();
-      //console.log the prodcut info got from inquirer  
-      console.log(`Product ID: ${product.product_id}`);
-      console.log(`Quantity: ${product.quantity}`);
+      //find what the product the user picked to gather more info
+      const userProduct = table.find(product => product.product_name === userPick.user_product);
 
-      //cnx to the db to get the specific product with the entered id 
-      //query to get the product quantity by id
-      const querySelect = "select product_name AS Name,stock_quantity As Qty,price As Price,product_sales As Sales from products where item_id=?";
+      if (userPick.user_qty < userProduct.stock_quantity) {
+        //generate the total for confirmation purposes
+        const total = userProduct.price * userPick.user_qty;
 
-      cnx.query(querySelect, [product.product_id], (error, result) => {
-            if (error) {
-              console.log(error)
+        //update product sales
+        const sales = total + userProduct.product_sales;
+  
+        //confirmation message
+        inquirer.prompt({
+          type: "confirm",
+          name: "confirmBuy",
+          message: `Would you like to buy this product: ${userProduct.product_name},${userPick.user_qty} time(s) for a total of $${total}? `,
+          default: true
+        }).then((confirmation) => {
+          //second level just as a proof of concept 
+          //get a confirmation for the purchase
+          if (confirmation.confirmBuy) {
+            //purchase authorized
+            //Update database with the new qty 
+            const currentQty = userProduct.stock_quantity - userPick.user_qty;
+  
+            //update query to update db
+            const updateString = "Update products set ? where ?";
+            const updateData={
+              stock_quantity:currentQty,
+              product_sales:sales              
             };
-
-            //get the values of the products from the DB
-            const productName = result[0].Name;
-            const inStock = result[0].Qty;
-            const price = result[0].Price;
-            let sales=result[0].Sales;
-
-            //console.log(queryData);
-            if (product.quantity < inStock) {
-
-              //generate the total for confirmation purposes
-              const total = price * product.quantity;
-              //update product sales
-              sales+=total;
-
-              //confirmation message
-              return inquirer.prompt({
-                type: "confirm",
-                name: "confirmBuy",
-                message: `Would you like to buy this product: ${productName},${product.quantity} time(s) for a total of $${total}? `,
-                default: true
-              }).then((confirmation) => {
-                  if (confirmation.confirmBuy) {
-                    //purchase authorized
-                    //Update database with the new qty 
-                    const currentQty = inStock - product.quantity;
-
-                    //update query to update db
-                    const updateQuery = "Update products set stock_quantity=?, product_sales=? where item_id=?";
-
-                    //new cnx to the database
-                    cnx.query(updateQuery,[currentQty,sales,product.product_id], (err, result)=> {
-                        if (err) throw err;
-
-                        console.log(`\n Purchase completed`); 
-                        console.log(`\n Item: ${productName}, Qty:${product.quantity} purchased! `);
-
-                        //console.log(`${result.affectedRows} record(s) updated`);
-                        console.log("\n\n");
-                        //display the list of product again
-                        displayProducts();
-
-                      });
-                  }else {
-                    //clear current display 
-                    //and display the table of products again
-                    console.log("\n Operation cancelled! Please select another product from our inventory!");
-                   
-                  displayProducts();
-                  }
-              });
+            const updateWhere={
+              item_id:userProduct.item_id
+            };
+            //cnx to the dabase to update the product
+            const updateQuery=cnx.query(updateString, [updateData,updateWhere], (err, result) => {
+              if (err) throw err;
+  
+              console.log(`\n Purchase completed`);
+              console.log(`Item: ${userProduct.product_name}, Qty:${userPick.user_qty} purchased! `);  
+              
+              //start another transaction
+              displayProducts();
+            });
+            console.log(updateQuery.sql);
+          } else {
+            //user cancel purchase.
+            console.log("\nOperation cancelled! Please select another product from our inventory!");
+            return displayProducts();  
           }
-          else{
-            //Not enought in stock.
-            console.log("Sorry! Not enought in stock at this");
-            console.log("Try another time or another product ");
-
-            //display list of products again
-            displayProducts();
-          }
-
+          //end second level
         });
-//end function buyProduct ()
+      }else {
+        //Not enought in stock.
+        console.log("\nSorry! Not enought in stock at this time");
+        console.log("Try another time or another product ");
+        return displayProducts();        
+      }
+    //end firs level    
+  });
+  //end function buyProduct
 }
